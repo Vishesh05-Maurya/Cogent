@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { Progress } from "@/components/ui/progress"
 import { Settings, SlidersHorizontal, ExternalLink, Sparkles, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 
 interface AISettingsDropdownProps {
   isAISuggestionsEnabled: boolean
@@ -61,10 +62,12 @@ export const AISettingsDropdown: React.FC<AISettingsDropdownProps> = ({
                 onClick={() => onToggleAISuggestions(!isAISuggestionsEnabled)}
               >
                 {/* Using a placeholder SVG for the logo */}
-                <img
+                <Image
                   src="/placeholder.svg?height=20&width=20"
                   alt={isAISuggestionsEnabled ? "AI Enabled" : "AI Disabled"}
                   className={cn("w-5 h-5", { "grayscale opacity-50": !isAISuggestionsEnabled })}
+                  width={20}
+                  height={20}
                 />
                 {!isAISuggestionsEnabled && (
                   <div className="absolute inset-0 flex items-center justify-center">

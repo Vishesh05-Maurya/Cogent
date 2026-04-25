@@ -289,6 +289,7 @@ const MainPlaygroundPage: React.FC = () => {
       saveTemplateData,
       setTemplateData,
       setOpenFiles,
+      templateData,
     ]
   );
 
