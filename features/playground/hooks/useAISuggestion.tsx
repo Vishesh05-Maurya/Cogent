@@ -8,13 +8,13 @@ interface AISuggestionsState {
   isEnabled: boolean;
 }
 
-interface UseAISuggestionsReturn extends AISuggestionsState {
+export interface UseAISuggestionsReturn extends AISuggestionsState {
   toggleEnabled: () => void;
-  fetchSuggestion: (type: string, editor: any) => Promise<void>;
+  fetchSuggestion: (type: string, editor: any, fileName?: string) => Promise<void>;
   acceptSuggestion: (editor: any, monaco: any) => void;
   rejectSuggestion: (editor: any) => void;
   clearSuggestion: (editor: any) => void;
-}
+  }
 
 export const useAISuggestions = (): UseAISuggestionsReturn => {
   const [state, setState] = useState<AISuggestionsState>({
@@ -27,10 +27,20 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
 
   const toggleEnabled = useCallback(() => {
     console.log("Toggling AI suggestions");
-    setState((prev) => ({ ...prev, isEnabled: !prev.isEnabled }));
+    setState((prev) => {
+      const willBeEnabled = !prev.isEnabled;
+      return { 
+        ...prev, 
+        isEnabled: willBeEnabled,
+        // If we are disabling, clear any active lingering suggestions
+        suggestion: willBeEnabled ? prev.suggestion : null,
+        position: willBeEnabled ? prev.position : null,
+        isLoading: willBeEnabled ? prev.isLoading : false
+      };
+    });
   }, []);
 
-  const fetchSuggestion = useCallback(async (type: string, editor: any) => {
+  const fetchSuggestion = useCallback(async (type: string, editor: any, fileName?: string) => {
     console.log("Fetching AI suggestion...");
     console.log("AI Suggestions Enabled:", state.isEnabled);
     console.log("Editor Instance Available:", !!editor);
@@ -66,6 +76,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
             cursorLine: cursorPosition.lineNumber - 1,
             cursorColumn: cursorPosition.column - 1,
             suggestionType: type,
+            fileName: fileName,
           };
           console.log("Request payload:", payload);
 
@@ -82,7 +93,7 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
           const data = await response.json();
           console.log("API response:", data);
 
-          if (data.suggestion) {
+          if (data.suggestion && !data.suggestion.includes("AI suggestion unavailable")) {
             const suggestionText = data.suggestion.trim();
             setState((prev) => ({
               ...prev,
@@ -94,8 +105,8 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
               isLoading: false,
             }));
           } else {
-            console.warn("No suggestion received from API.");
-            setState((prev) => ({ ...prev, isLoading: false }));
+            console.warn("No suggestion received from API or it was unavailable.");
+            setState((prev) => ({ ...prev, isLoading: false, suggestion: null, position: null }));
           }
         } catch (error) {
           console.error("Error fetching code suggestion:", error);

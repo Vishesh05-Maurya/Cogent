@@ -1,7 +1,9 @@
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/features/dashboard/dashboard-sidebar"
 import { getAllPlaygroundForUser } from "@/features/playground/actions"
+import Image from "next/image"
 import type React from "react"
+
 
 export default async function DashboardLayout({
   children,
@@ -30,12 +32,24 @@ export default async function DashboardLayout({
     })) || []
 
   return (
+    
     <SidebarProvider>
+      <div className="absolute inset-0 opacity-[0.4] dark:opacity-[0.25] grayscale-[0.5] contrast-[1.1]">
+                        <Image
+                            src="/icon1.png"
+                            alt="Tech Background"
+                            fill
+                            className="object-cover"
+                            priority
+                        />
+
+                   </div>
       <div className="flex min-h-screen w-full overflow-x-hidden">
         {/* Pass the formatted data with string icon names */}
         <DashboardSidebar initialPlaygroundData={formattedPlaygroundData} />
         <main className="flex-1">{children}</main>
       </div>
+       
     </SidebarProvider>
   )
 }

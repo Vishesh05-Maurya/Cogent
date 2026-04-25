@@ -6,6 +6,7 @@ interface CodeSuggestionRequest {
   cursorColumn: number
   suggestionType: string
   fileName?: string
+  userPrompt?: string
 }
 
 interface CodeContext {
@@ -24,10 +25,10 @@ interface CodeContext {
 export async function POST(request: NextRequest) {
   try {
     const body: CodeSuggestionRequest = await request.json()
-    const { fileContent, cursorLine, cursorColumn, suggestionType, fileName } = body
+    const { fileContent, cursorLine, cursorColumn, suggestionType, fileName, userPrompt } = body
 
     // Validate input
-    if (!fileContent || cursorLine < 0 || cursorColumn < 0 || !suggestionType) {
+    if (typeof fileContent !== "string" || cursorLine < 0 || cursorColumn < 0 || !suggestionType) {
       return NextResponse.json({ error: "Invalid input parameters" }, { status: 400 })
     }
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const context = analyzeCodeContext(fileContent, cursorLine, cursorColumn, fileName)
 
     // Build AI prompt
-    const prompt = buildPrompt(context, suggestionType)
+    const prompt = buildPrompt(context, suggestionType, userPrompt)
 
     // Call AI service (replace with your AI service)
     const suggestion = await generateSuggestion(prompt)
@@ -98,7 +99,27 @@ function analyzeCodeContext(content: string, line: number, column: number, fileN
 /**
  * Build AI prompt based on context
  */
-function buildPrompt(context: CodeContext, suggestionType: string): string {
+function buildPrompt(context: CodeContext, suggestionType: string, userPrompt?: string): string {
+  if (userPrompt) {
+    return `You are an expert code generation assistant. Generate code to satisfy this request: "${userPrompt}"
+
+Language: ${context.language}
+Framework: ${context.framework}
+
+Context:
+${context.beforeContext}
+${context.currentLine.substring(0, context.cursorPosition.column)}|CURSOR|${context.currentLine.substring(context.cursorPosition.column)}
+${context.afterContext}
+
+Instructions:
+1. Provide ONLY the code that should be inserted at the cursor to fulfill the user's request.
+2. Maintain proper indentation passing seamlessly into the current code state.
+3. Do not include markdown code block formatting in your response. Return ONLY raw code text.
+4. Follow best practices.
+
+Generate code:`
+  }
+
   return `You are an expert code completion assistant. Generate a ${suggestionType} suggestion.
 
 Language: ${context.language}
@@ -129,18 +150,20 @@ Generate suggestion:`
  */
 async function generateSuggestion(prompt: string): Promise<string> {
   try {
-    // Replace this with your actual AI service call
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "codellama:latest",
-        prompt,
-        stream: false,
-        options: {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
           temperature: 0.7,
-          max_tokens: 300,
-        },
+          maxOutputTokens: 300
+        }
       }),
     })
 
@@ -149,7 +172,7 @@ async function generateSuggestion(prompt: string): Promise<string> {
     }
 
     const data = await response.json()
-    let suggestion = data.response
+    let suggestion = data.candidates?.[0]?.content?.parts?.[0]?.text || ""
 
     // Clean up the suggestion
     if (suggestion.includes("```")) {

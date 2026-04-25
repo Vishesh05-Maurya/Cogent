@@ -37,18 +37,31 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import WebContainerPreview from "@/features/webcontainers/components/webcontainer-preveiw";
 import LoadingStep from "@/components/ui/loader";
-import { PlaygroundEditor } from "@/features/playground/components/playground-editor";
+import dynamic from "next/dynamic";
+
+const WebContainerPreview = dynamic(
+  () => import("@/features/webcontainers/components/webcontainer-preveiw"),
+  { ssr: false }
+);
+
+const PlaygroundEditor = dynamic(
+  () => import("@/features/playground/components/playground-editor").then(mod => mod.PlaygroundEditor),
+  { ssr: false }
+);
+
+const TerminalComponent = dynamic(
+  () => import("@/features/webcontainers/components/terminal"),
+  { ssr: false }
+);
+
 import ToggleAI from "@/features/playground/components/toggle-ai";
-import { useFileExplorer } from "@/features/playground/hooks/useFileExplorer";
-import { usePlayground } from "@/features/playground/hooks/usePlayground";
-import { useAISuggestions } from "@/features/playground/hooks/useAISuggestion";
+import { usePlayground } from "@/features/playground/context/playground-context";
 import { useWebContainer } from "@/features/webcontainers/hooks/useWebContainer";
-import { SaveUpdatedCode } from "@/features/playground/actions";
+import { SaveUpdatedCode, publishPlayground } from "@/features/playground/actions";
 import { TemplateFolder } from "@/features/playground/types";
 import { findFilePath } from "@/features/playground/libs";
-import { ConfirmationDialog } from "@/features/playground/components/dialogs/conformation-dialog";
+import { ConfirmationDialog } from "@/features/playground/components/dialogs/confirmation-dialog";
 
 const MainPlaygroundPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -62,31 +75,50 @@ const MainPlaygroundPage: React.FC = () => {
     onCancel: () => {},
   });
 
-  const [isPreviewVisible, setIsPreviewVisible] = useState(true);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-  // Custom hooks
-  const { playgroundData, templateData, isLoading, error, saveTemplateData } =
-    usePlayground(id);
-  const aiSuggestions = useAISuggestions();
+
+  // use Playground Context instead of hooks
   const {
+    playgroundData,
+    templateData,
+    isLoading,
+    error,
+    saveTemplateData,
+    aiSuggestions,
+    fileExplorer,
     activeFileId,
-    closeAllFiles,
+    openFiles,
+    editorContent,
+    setIsAISuggestionsEnabled,
+    setIsPreviewVisible,
+    setIsTerminalVisible,
+    isPreviewVisible,
+    isTerminalVisible,
+    isAISuggestionsEnabled,
+    isRunning,
+    runCode,
+    fetchPlaygroundData,
+    terminalRef,
+  } = usePlayground();
+
+  const {
+    setTemplateData,
     openFile,
     closeFile,
-    editorContent,
-    updateFileContent,
+    closeAllFiles,
     handleAddFile,
     handleAddFolder,
     handleDeleteFile,
     handleDeleteFolder,
     handleRenameFile,
     handleRenameFolder,
-    openFiles,
-    setTemplateData,
+    updateFileContent,
     setActiveFileId,
     setPlaygroundId,
     setOpenFiles,
-  } = useFileExplorer();
+  } = fileExplorer;
+
 
   const {
     serverUrl,
@@ -99,23 +131,10 @@ const MainPlaygroundPage: React.FC = () => {
 
   const lastSyncedContent = useRef<Map<string, string>>(new Map());
 
-  // Set template data when playground loads
-  React.useEffect(() => {
-    setPlaygroundId(id);
-  }, [id, setPlaygroundId]);
-
-  // Initialize zustand templateData from usePlayground only on first load
-  React.useEffect(() => {
-    if (templateData && !openFiles.length) {
-
-      
-      setTemplateData(templateData);
-    }
-  }, [templateData, setTemplateData, openFiles.length]);
 
   // Create wrapper functions that pass saveTemplateData
   const wrappedHandleAddFile = useCallback(
-    (newFile: TemplateFile, parentPath: string) => {
+    async (newFile: TemplateFile, parentPath: string) => {
       return handleAddFile(
         newFile,
         parentPath,
@@ -128,28 +147,28 @@ const MainPlaygroundPage: React.FC = () => {
   );
 
   const wrappedHandleAddFolder = useCallback(
-    (newFolder: TemplateFolder, parentPath: string) => {
+    async (newFolder: TemplateFolder, parentPath: string) => {
       return handleAddFolder(newFolder, parentPath, instance, saveTemplateData);
     },
     [handleAddFolder, instance, saveTemplateData]
   );
 
   const wrappedHandleDeleteFile = useCallback(
-    (file: TemplateFile, parentPath: string) => {
+    async (file: TemplateFile, parentPath: string) => {
       return handleDeleteFile(file, parentPath, saveTemplateData);
     },
     [handleDeleteFile, saveTemplateData]
   );
 
   const wrappedHandleDeleteFolder = useCallback(
-    (folder: TemplateFolder, parentPath: string) => {
+    async (folder: TemplateFolder, parentPath: string) => {
       return handleDeleteFolder(folder, parentPath, saveTemplateData);
     },
     [handleDeleteFolder, saveTemplateData]
   );
 
   const wrappedHandleRenameFile = useCallback(
-    (
+    async (
       file: TemplateFile,
       newFilename: string,
       newExtension: string,
@@ -167,7 +186,7 @@ const MainPlaygroundPage: React.FC = () => {
   );
 
   const wrappedHandleRenameFolder = useCallback(
-    (folder: TemplateFolder, newFolderName: string, parentPath: string) => {
+    async (folder: TemplateFolder, newFolderName: string, parentPath: string) => {
       return handleRenameFolder(
         folder,
         newFolderName,
@@ -193,7 +212,7 @@ const MainPlaygroundPage: React.FC = () => {
       const fileToSave = openFiles.find((f) => f.id === targetFileId);
       if (!fileToSave) return;
 
-      const latestTemplateData = useFileExplorer.getState().templateData;
+      const latestTemplateData = templateData;
       if (!latestTemplateData) return;
 
       try {
@@ -209,7 +228,7 @@ const MainPlaygroundPage: React.FC = () => {
         const updatedTemplateData = JSON.parse(
           JSON.stringify(latestTemplateData)
         );
-        const updateFileContent = (items: any[]) =>
+        const updateFileContent = (items: any[]): any[] =>
           items.map((item) => {
             if ("folderName" in item) {
               return { ...item, items: updateFileContent(item.items) };
@@ -289,17 +308,40 @@ const MainPlaygroundPage: React.FC = () => {
     }
   };
 
-  // Add event to save file by click ctrl + s
+  const handlePublish = async () => {
+    if (!playgroundData) return;
+    setIsPublishing(true);
+    try {
+      const newStatus = !playgroundData.isPublic;
+      const res = await publishPlayground(id, newStatus);
+      if (res?.success) {
+        toast.success(newStatus ? "Playground published to Snippets!" : "Playground unpublished");
+        await fetchPlaygroundData(); // refresh to get the updated isPublic status
+      } else {
+        toast.error(res?.error || "Failed to update publish status");
+      }
+    } catch (error) {
+      toast.error("An error occurred trying to publish");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Add event to save file by click ctrl + s or run by ctrl + enter
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "s") {
         e.preventDefault();
         handleSave();
       }
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        runCode();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSave]);
+  }, [handleSave, runCode]);
 
   // Error state
   if (error) {
@@ -382,7 +424,7 @@ const MainPlaygroundPage: React.FC = () => {
             <div className="flex flex-1 items-center gap-2">
               <div className="flex flex-col flex-1">
                 <h1 className="text-sm font-medium">
-                  {playgroundData?.name || "Code Playground"}
+                  {playgroundData?.title || "Code Playground"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {openFiles.length} file(s) open
@@ -395,54 +437,51 @@ const MainPlaygroundPage: React.FC = () => {
                   <TooltipTrigger asChild>
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => handleSave()}
-                      disabled={!activeFile || !activeFile.hasUnsavedChanges}
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => runCode()}
+                      disabled={isRunning || !activeFile}
                     >
-                      <Save className="h-4 w-4" />
+                      {isRunning ? (
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="fill-current"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                          <span>Run</span>
+                        </div>
+                      )}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Save (Ctrl+S)</TooltipContent>
+                  <TooltipContent>Run Code (Ctrl+Enter)</TooltipContent>
                 </Tooltip>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleSaveAll}
-                      disabled={!hasUnsavedChanges}
-                    >
-                      <Save className="h-4 w-4" /> All
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Save All (Ctrl+Shift+S)</TooltipContent>
-                </Tooltip>
+
 
                 <ToggleAI
                   isEnabled={aiSuggestions.isEnabled}
                   onToggle={aiSuggestions.toggleEnabled}
                   suggestionLoading={aiSuggestions.isLoading}
+                  activeFile={activeFile ? {
+                    name: `${activeFile.filename}.${activeFile.fileExtension}`,
+                    content: activeFile.content,
+                    language: activeFile.fileExtension,
+                  } : undefined}
                 />
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => setIsPreviewVisible(!isPreviewVisible)}
-                    >
-                      {isPreviewVisible ? "Hide" : "Show"} Preview
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={closeAllFiles}>
-                      Close All Files
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  size="sm"
+                  variant={playgroundData?.isPublic ? "default" : "outline"}
+                  onClick={handlePublish}
+                  disabled={isPublishing || !playgroundData}
+                  className={playgroundData?.isPublic ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+                >
+                  {isPublishing ? (
+                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : null}
+                  {playgroundData?.isPublic ? "Published" : "Publish"}
+                </Button>
+
+
               </div>
             </div>
           </header>
@@ -506,7 +545,7 @@ const MainPlaygroundPage: React.FC = () => {
                     direction="horizontal"
                     className="h-full"
                   >
-                    <ResizablePanel defaultSize={isPreviewVisible ? 50 : 100}>
+                    <ResizablePanel defaultSize={60}>
                       <PlaygroundEditor
                         activeFile={activeFile}
                         content={activeFile?.content || ""}
@@ -525,25 +564,21 @@ const MainPlaygroundPage: React.FC = () => {
                         onTriggerSuggestion={(type, editor) =>
                           aiSuggestions.fetchSuggestion(type, editor)
                         }
+                        isInlineAIEnabled={aiSuggestions.isEnabled}
                       />
                     </ResizablePanel>
 
-                    {isPreviewVisible && (
-                      <>
-                        <ResizableHandle />
-                        <ResizablePanel defaultSize={50}>
-                          <WebContainerPreview
-                            templateData={templateData}
-                            instance={instance}
-                            writeFileSync={writeFileSync}
-                            isLoading={containerLoading}
-                            error={containerError}
-                            serverUrl={serverUrl!}
-                            forceResetup={false}
-                          />
-                        </ResizablePanel>
-                      </>
-                    )}
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={40}>
+                      <div className="h-full border-l bg-[#09090B]">
+                        {/* @ts-ignore */}
+                        <TerminalComponent
+                          ref={terminalRef}
+                          className="h-full rounded-none"
+                          theme="dark"
+                        />
+                      </div>
+                    </ResizablePanel>
                   </ResizablePanelGroup>
                 </div>
               </div>

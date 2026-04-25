@@ -8,7 +8,19 @@ import { PlaygroundEditor } from "./playground-editor"
 import { PlaygroundHeader } from "./playground-header"
 
 export function PlaygroundLayout() {
-  const { error, loadingStep, templateData, fetchPlaygroundData } = usePlayground()
+  const {
+    error,
+    loadingStep,
+    templateData,
+    fetchPlaygroundData,
+    activeFileId,
+    openFiles,
+    editorContent,
+    fileExplorer,
+    aiSuggestions,
+  } = usePlayground()
+
+  const activeFile = openFiles.find((f) => f.id === activeFileId)
 
   if (error) {
     return (
@@ -56,7 +68,19 @@ export function PlaygroundLayout() {
   return (
     <div className="h-screen flex flex-col">
       <PlaygroundHeader />
-      <PlaygroundEditor />
+      <div className="flex-1 overflow-hidden">
+        <PlaygroundEditor
+          activeFile={activeFile}
+          content={editorContent}
+          onContentChange={(value) => activeFileId && fileExplorer.updateFileContent(activeFileId, value)}
+          suggestion={aiSuggestions.suggestion}
+          suggestionLoading={aiSuggestions.isLoading}
+          suggestionPosition={aiSuggestions.position}
+          onAcceptSuggestion={aiSuggestions.acceptSuggestion}
+          onRejectSuggestion={aiSuggestions.rejectSuggestion}
+          onTriggerSuggestion={aiSuggestions.fetchSuggestion}
+        />
+      </div>
     </div>
   )
 }

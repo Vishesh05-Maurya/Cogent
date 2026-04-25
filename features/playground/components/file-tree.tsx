@@ -5,20 +5,20 @@ import { ChevronRight, File, Folder } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-interface FileItem {
+export interface FileItem {
   filename: string
   fileextension?: string
   content: string
   type: "file"
 }
 
-interface FolderItem {
+export interface FolderItem {
   foldername: string
   items: (FileItem | FolderItem)[]
   type: "folder"
 }
 
-type FileSystemItem = FileItem | FolderItem
+export type FileSystemItem = FileItem | FolderItem
 
 interface FileTreeProps {
   data: FileSystemItem

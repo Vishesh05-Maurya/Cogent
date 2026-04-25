@@ -35,7 +35,12 @@ import {
 } from "lucide-react";
 import React from "react";
 import { cn } from "@/lib/utils";
-import { AIChatSidePanel } from "@/features/ai-chat/components/ai-chat-sidepanel";
+import dynamic from "next/dynamic";
+
+const AIChatSidePanel = dynamic(
+  () => import("@/features/ai-chat/components/ai-chat-sidepanel").then(mod => mod.AIChatSidePanel),
+  { ssr: false }
+);
 
 
 interface ToggleAIProps {
@@ -45,34 +50,42 @@ interface ToggleAIProps {
   suggestionLoading: boolean;
   loadingProgress?: number;
   activeFeature?: string;
+  activeFile?: { name: string; content: string; language?: string };
+  cursorPosition?: { line: number; column: number };
+  onInsertCode?: (code: string, fileName?: string, position?: { line: number; column: number }) => void;
+  onRunCode?: (code: string, language: string) => void;
 }
 
 const ToggleAI: React.FC<ToggleAIProps> = ({
   isEnabled,
   onToggle,
-
   suggestionLoading,
   loadingProgress = 0,
   activeFeature,
+  activeFile,
+  cursorPosition,
+  onInsertCode,
+  onRunCode,
 }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Dummy handler for code insertion from AI chat panel
+  // Dummy handler for code insertion from AI chat panel (fallback)
   const handleInsertCode = (code: string, fileName?: string, position?: { line: number; column: number }) => {
-    // TODO: Implement actual code insertion logic
-    // For now, just log the code and info
-    console.log("Insert code:", { code, fileName, position });
-    // You can add your integration with the editor here
+    if (onInsertCode) {
+      onInsertCode(code, fileName, position);
+    } else {
+      console.log("Insert code:", { code, fileName, position });
+    }
   };
 
-  // Dummy handler for running code from AI chat panel
+  // Dummy handler for running code from AI chat panel (fallback)
   const handleRunCode = (code: string, language: string) => {
-    console.log("Run code:", { code, language });
+    if (onRunCode) {
+      onRunCode(code, language);
+    } else {
+      console.log("Run code:", { code, language });
+    }
   };
-
-  // Dummy activeFile and cursorPosition for demonstration
-  const activeFile = { name: "example.ts", content: "// file content" };
-  const cursorPosition = { line: 1, column: 1 };
 
   return (
     <>
@@ -152,10 +165,10 @@ const ToggleAI: React.FC<ToggleAIProps> = ({
                 )}
                 <div>
                   <div className="text-sm font-medium">
-                    {isEnabled ? "Disable" : "Enable"} AI
+                    {isEnabled ? "Disable" : "Enable"} Inline AI
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Toggle AI assistance
+                    Toggle inline AI trigger (Ctrl+G)
                   </div>
                 </div>
               </div>
@@ -199,7 +212,7 @@ const ToggleAI: React.FC<ToggleAIProps> = ({
         onRunCode={handleRunCode}
         activeFileName={activeFile?.name}
         activeFileContent={activeFile?.content}
-        activeFileLanguage="TypeScript" // Assuming TypeScript as the language
+        activeFileLanguage={activeFile?.language || "TypeScript"}
         cursorPosition={cursorPosition}
         theme="dark"
       />

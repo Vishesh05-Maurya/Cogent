@@ -1,10 +1,20 @@
 // templatePaths.ts
 export const templatePaths = {
-    REACT: '/vibecode-starters/react-ts',
-    NEXTJS: '/vibecode-starters/nextjs-new',
-    EXPRESS: '/vibecode-starters/express-simple',
-    VUE: '/vibecode-starters/vue',
-    HONO: '/vibecode-starters/hono-nodejs-starter',
-    ANGULAR: '/vibecode-starters/angular',
+    // Current Programming Languages
+    PYTHON: 'vibecode-starters/python',
+    JAVA: 'vibecode-starters/java',
+    C: 'vibecode-starters/c',
+    CPP: 'vibecode-starters/cpp',
+    JAVASCRIPT: 'vibecode-starters/javascript',
+    GO: 'vibecode-starters/go',
+    RUST: 'vibecode-starters/rust',
+
+    // Legacy Fallbacks (Prevent 404s for existing projects)
+    REACT: 'vibecode-starters/javascript',
+    NEXTJS: 'vibecode-starters/javascript',
+    EXPRESS: 'vibecode-starters/javascript',
+    VUE: 'vibecode-starters/javascript',
+    HONO: 'vibecode-starters/javascript',
+    ANGULAR: 'vibecode-starters/javascript',
   };
   

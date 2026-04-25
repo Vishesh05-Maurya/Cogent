@@ -1,46 +1,27 @@
-import NextAuth from "next-auth";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { publicRoutes, apiAuthPrefix } from "@/routes";
 
-import {
-  DEFAULT_LOGIN_REDIRECT,
-  apiAuthPrefix,
-  publicRoutes,
-  authRoutes,
-} from "@/routes";
-import authConfig from "./auth.config";
+const isProtectedRoute = createRouteMatcher([
+  "/((?!auth/sign-in|api/auth).*)" // Protects everything except auth and webhooks/static
+]);
 
+const isPublicRoute = createRouteMatcher(publicRoutes);
 
-const { auth } = NextAuth(authConfig);
-
-// @ts-ignore
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
-
-  const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
-
-  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-
-  if (isApiAuthRoute) {
-    return null;
+export default clerkMiddleware(async (auth, req) => {
+  if (isPublicRoute(req) || req.nextUrl.pathname.startsWith(apiAuthPrefix)) {
+    return;
   }
 
-  if (isAuthRoute) {
-    if (isLoggedIn) {
-      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
-    }
-    return null;
+  if (isProtectedRoute(req)) {
+      await auth.protect();
   }
-
-  if(!isLoggedIn && !isPublicRoute){
-    return Response.redirect(new URL("/auth/sign-in" , nextUrl))
-  }
-
-  return null
-});
+}, { clockSkewInMs: 100000 });
 
 export const config = {
-  // copied from clerk
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 };

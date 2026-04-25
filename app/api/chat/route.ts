@@ -33,23 +33,24 @@ Keep responses concise but comprehensive. Use code blocks with language specific
   const timeoutId = setTimeout(() => controller.abort(), 15000)
 
   try {
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "codellama:latest",
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          top_p: 0.9,
-          max_tokens: 1000,
-          num_predict: 1000,
-          repeat_penalty: 1.1,
-          context_length: 4096,
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
         },
+        contents: messages.map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }]
+        })),
+        generationConfig: {
+          temperature: 0.7,
+          topP: 0.9,
+          maxOutputTokens: 1000
+        }
       }),
       signal: controller.signal,
     })
@@ -63,10 +64,10 @@ Keep responses concise but comprehensive. Use code blocks with language specific
     }
 
     const data = await response.json()
-    if (!data.response) {
+    if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
       throw new Error("No response from AI model")
     }
-    return data.response.trim()
+    return data.candidates[0].content.parts[0].text.trim()
   } catch (error) {
     clearTimeout(timeoutId)
     if ((error as Error).name === "AbortError") {
@@ -94,19 +95,22 @@ Enhanced prompt should:
 Return only the enhanced prompt, nothing else.`
 
   try {
-    const response = await fetch("http://localhost:11434/api/generate", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "codellama:latest",
-        prompt: enhancementPrompt,
-        stream: false,
-        options: {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: enhancementPrompt }]
+          }
+        ],
+        generationConfig: {
           temperature: 0.3,
-          max_tokens: 500,
-        },
+          maxOutputTokens: 500
+        }
       }),
     })
 
@@ -115,7 +119,7 @@ Return only the enhanced prompt, nothing else.`
     }
 
     const data = await response.json()
-    return data.response?.trim() || request.prompt
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || request.prompt
   } catch (error) {
     console.error("Prompt enhancement error:", error)
     return request.prompt // Return original if enhancement fails

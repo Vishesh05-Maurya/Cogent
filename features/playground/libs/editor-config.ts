@@ -1,4 +1,5 @@
 import type { Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 
 export const getEditorLanguage = (fileExtension: string): string => {
   const extension = fileExtension.toLowerCase();
@@ -128,101 +129,60 @@ export const configureMonaco = (monaco: Monaco) => {
       { token: "invalid.deprecated", foreground: "D4D4D4", fontStyle: "strikethrough" },
     ],
     colors: {
-      // Editor background
       "editor.background": "#0D1117",
       "editor.foreground": "#E6EDF3",
-      
-      // Line numbers
       "editorLineNumber.foreground": "#7D8590",
       "editorLineNumber.activeForeground": "#F0F6FC",
-      
-      // Cursor
       "editorCursor.foreground": "#F0F6FC",
-      
-      // Selection
       "editor.selectionBackground": "#264F78",
       "editor.selectionHighlightBackground": "#ADD6FF26",
       "editor.inactiveSelectionBackground": "#3A3D41",
-      
-      // Current line
       "editor.lineHighlightBackground": "#21262D",
       "editor.lineHighlightBorder": "#30363D",
-      
-      // Gutter
       "editorGutter.background": "#0D1117",
       "editorGutter.modifiedBackground": "#BB800966",
       "editorGutter.addedBackground": "#347D3966",
       "editorGutter.deletedBackground": "#F8514966",
-      
-      // Scrollbar
       "scrollbar.shadow": "#0008",
       "scrollbarSlider.background": "#6E768166",
       "scrollbarSlider.hoverBackground": "#6E768188",
       "scrollbarSlider.activeBackground": "#6E7681BB",
-      
-      // Minimap
       "minimap.background": "#161B22",
       "minimap.selectionHighlight": "#264F78",
-      
-      // Find/Replace
       "editor.findMatchBackground": "#9E6A03",
       "editor.findMatchHighlightBackground": "#F2CC6080",
       "editor.findRangeHighlightBackground": "#3FB95040",
-      
-      // Word highlight
       "editor.wordHighlightBackground": "#575757B8",
       "editor.wordHighlightStrongBackground": "#004972B8",
-      
-      // Brackets
       "editorBracketMatch.background": "#0064001A",
       "editorBracketMatch.border": "#888888",
-      
-      // Indentation guides
       "editorIndentGuide.background": "#21262D",
       "editorIndentGuide.activeBackground": "#30363D",
-      
-      // Ruler
       "editorRuler.foreground": "#21262D",
-      
-      // Whitespace
       "editorWhitespace.foreground": "#6E7681",
-      
-      // Error/Warning squiggles
       "editorError.foreground": "#F85149",
       "editorWarning.foreground": "#D29922",
       "editorInfo.foreground": "#75BEFF",
       "editorHint.foreground": "#EEEEEE",
-      
-      // Suggest widget
       "editorSuggestWidget.background": "#161B22",
       "editorSuggestWidget.border": "#30363D",
       "editorSuggestWidget.foreground": "#E6EDF3",
       "editorSuggestWidget.selectedBackground": "#21262D",
-      
-      // Hover widget
       "editorHoverWidget.background": "#161B22",
       "editorHoverWidget.border": "#30363D",
-      
-      // Panel
       "panel.background": "#0D1117",
       "panel.border": "#30363D",
-      
-      // Activity bar
       "activityBar.background": "#0D1117",
       "activityBar.foreground": "#E6EDF3",
       "activityBar.border": "#30363D",
-      
-      // Side bar
       "sideBar.background": "#0D1117",
       "sideBar.foreground": "#E6EDF3",
       "sideBar.border": "#30363D",
     },
   });
 
-  // Set the theme
   monaco.editor.setTheme("modern-dark");
   
-  // Configure additional editor settings
   monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
@@ -233,7 +193,6 @@ export const configureMonaco = (monaco: Monaco) => {
     noSyntaxValidation: false,
   });
 
-  // Set compiler options for better IntelliSense
   monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.Latest,
     allowNonTsExtensions: true,
@@ -262,7 +221,7 @@ export const configureMonaco = (monaco: Monaco) => {
   });
 };
 
-export const defaultEditorOptions = {
+export const defaultEditorOptions: editor.IStandaloneEditorConstructionOptions = {
   // Font settings
   fontSize: 14,
   fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, 'Liberation Mono', Menlo, Courier, monospace",
@@ -346,7 +305,7 @@ export const defaultEditorOptions = {
   
   // Cursor
   cursorBlinking: "smooth",
-  cursorSmoothCaretAnimation: true,
+  cursorSmoothCaretAnimation: "on",
   cursorStyle: "line",
   cursorWidth: 2,
   
@@ -371,4 +330,4 @@ export const defaultEditorOptions = {
   stickyScroll: {
     enabled: true
   }
-};
+} as any;

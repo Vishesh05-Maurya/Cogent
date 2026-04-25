@@ -44,25 +44,34 @@ export const toggleStarMarked = async (playgroundId: string, isChecked: boolean)
 
 export const createPlayground = async (data:{
     title: string;
-    template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
+    template: "PYTHON" | "JAVA" | "C" | "CPP" | "JAVASCRIPT" | "GO" | "RUST";
     description?: string;
   })=>{
     const {template , title , description} = data;
 
     const user = await currentUser();
+    const userId = user?.id;
+    console.log("createPlayground: User ID:", userId);
+
+    if (!userId) {
+      throw new Error("You must be logged in to create a playground");
+    }
+
     try {
+        console.log("createPlayground: Attempting to create playground for user:", userId);
         const playground = await db.playground.create({
             data:{
                 title:title,
                 description:description,
                 template:template,
-                userId:user?.id!
+                userId: userId
             }
         })
-
+        console.log("createPlayground: Successfully created playground:", playground.id);
         return playground;
     } catch (error) {
-        console.log(error)
+        console.error("createPlayground: Error during creation:", error);
+        throw error;
     }
 }
 
@@ -99,6 +108,12 @@ export const getPlaygroundById = async (id:string)=>{
         const playground = await db.playground.findUnique({
             where:{id},
             select:{
+              id: true,
+              userId: true,
+              isPublic: true,
+              title: true,
+              description: true,
+              template: true,
               templateFiles:{
                 select:{
                   content:true
@@ -199,3 +214,96 @@ export const duplicateProjectById = async (id: string) => {
         console.error("Error duplicating project:", error);
     }
 };
+
+export const publishPlayground = async (id: string, isPublic: boolean) => {
+    try {
+        const user = await currentUser();
+        if (!user) throw new Error("Not logged in");
+
+        await db.playground.update({
+            where: {
+                id,
+                userId: user.id // ensure only owner can publish
+            },
+            data: {
+                isPublic
+            }
+        });
+
+        revalidatePath("/snippets");
+        revalidatePath(`/playground/${id}`);
+        return { success: true };
+    } catch (error) {
+        console.log(error);
+        return { success: false, error: "Failed to publish playground" };
+    }
+};
+
+export const getPublicPlaygrounds = async () => {
+    try {
+        const playgrounds = await db.playground.findMany({
+            where: {
+                isPublic: true
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        image: true
+                    }
+                },
+                Starmark: {
+                    select: {
+                        isMarked: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+      
+        return playgrounds;
+    } catch (error) {
+        console.log(error);
+        return [];
+    }
+};
+
+export const forkPlayground = async (id: string) => {
+    try {
+        const user = await currentUser();
+        if (!user) throw new Error("Not logged in");
+        
+        const originalPlayground = await db.playground.findUnique({
+            where: { id },
+            include: {
+                templateFiles: true,
+            },
+        });
+
+        if (!originalPlayground) {
+            throw new Error("Original playground not found");
+        }
+
+        const duplicatedPlayground = await db.playground.create({
+            data: {
+                title: `${originalPlayground.title} (Forked)`,
+                description: originalPlayground.description,
+                template: originalPlayground.template,
+                userId: user.id, // Assign to current user
+                templateFiles: {
+                  // @ts-ignore
+                    create: originalPlayground.templateFiles.map((file) => ({
+                        content: file.content,
+                    })),
+                },
+            },
+        });
+
+        revalidatePath("/dashboard");
+        return duplicatedPlayground;
+    } catch (error) {
+        console.error("Error forking project:", error);
+    }
+};

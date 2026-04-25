@@ -1,14 +1,14 @@
 "use server";
 
-import { auth } from "@/auth";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 
 
-export const getUserById = async (id:string)=>{
+export const getUserById = async (id: string) => {
     try {
         const user = await db.user.findUnique({
-            where:{id},
-            include:{accounts:true}
+            where: { id },
+            include: { accounts: true }
         })
         return user
     } catch (error) {
@@ -17,10 +17,10 @@ export const getUserById = async (id:string)=>{
     }
 }
 
-export const getAccountByUserId = async (userId:string)=>{
+export const getAccountByUserId = async (userId: string) => {
     try {
         const account = await db.account.findFirst({
-            where:{
+            where: {
                 userId
             }
         })
@@ -31,7 +31,10 @@ export const getAccountByUserId = async (userId:string)=>{
     }
 }
 
-export const currentUser = async()=>{
-    const user = await auth()
-    return user?.user;
+export const currentUser = async () => {
+    const { userId } = await auth()
+    if (!userId) return null;
+    return await db.user.findUnique({
+        where: { id: userId }
+    });
 }

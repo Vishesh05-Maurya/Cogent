@@ -33,7 +33,7 @@ type TemplateSelectionModalProps = {
   onClose: () => void;
   onSubmit: (data: {
     title: string;
-    template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
+    template: "PYTHON" | "JAVA" | "C" | "CPP" | "JAVASCRIPT" | "GO" | "RUST";
     description?: string;
   }) => void;
 };
@@ -47,91 +47,86 @@ interface TemplateOption {
   popularity: number;
   tags: string[];
   features: string[];
-  category: "frontend" | "backend" | "fullstack";
+  category: "practice";
 }
 
 const templates: TemplateOption[] = [
   {
-    id: "react",
-    name: "React",
-    description:
-      "A JavaScript library for building user interfaces with component-based architecture",
-    icon: "/react.svg",
-    color: "#61DAFB",
+    id: "python",
+    name: "Python",
+    description: "Versatile and easy-to-learn language for data science, web development, and automation.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg",
+    color: "#3776AB",
     popularity: 5,
-    tags: ["UI", "Frontend", "JavaScript"],
-    features: ["Component-Based", "Virtual DOM", "JSX Support"],
-    category: "frontend",
+    tags: ["Data Science", "Scripting", "AI"],
+    features: ["Simple Syntax", "Large Standard Library", "Interpreted"],
+    category: "practice",
   },
   {
-    id: "nextjs",
-    name: "Next.js",
-    description:
-      "The React framework for production with server-side rendering and static site generation",
-    icon: "/nextjs-icon.svg",
+    id: "java",
+    name: "Java",
+    description: "Robust, object-oriented language for enterprise applications and Android development.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg",
+    color: "#007396",
+    popularity: 4,
+    tags: ["Enterprise", "OOP", "JVM"],
+    features: ["Platform Independent", "Strongly Typed", "Multi-threaded"],
+    category: "practice",
+  },
+  {
+    id: "cpp",
+    name: "C++",
+    description: "High-performance language for system software, game development, and competitive programming.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
+    color: "#00599C",
+    popularity: 5,
+    tags: ["Systems", "Gaming", "Performance"],
+    features: ["Low-level Control", "Memory Management", "STL Support"],
+    category: "practice",
+  },
+  {
+    id: "c",
+    name: "C",
+    description: "The foundation of modern computing, focused on system-level performance and efficiency.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg",
+    color: "#A8B9CC",
+    popularity: 4,
+    tags: ["Systems", "Kernel", "Hardware"],
+    features: ["Procedural", "Efficient", "Portable"],
+    category: "practice",
+  },
+  {
+    id: "javascript",
+    name: "JavaScript",
+    description: "The language of the web, used for frontend, backend, and cross-platform apps.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
+    color: "#F7DF1E",
+    popularity: 5,
+    tags: ["Web", "Async", "Cross-platform"],
+    features: ["Dynamic Typing", "Ubiquitous", "Node.js Support"],
+    category: "practice",
+  },
+  {
+    id: "go",
+    name: "Go",
+    description: "Google's language for simple, efficient, and reliable cloud-scale applications.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original-wordmark.svg",
+    color: "#00ADD8",
+    popularity: 4,
+    tags: ["Cloud", "Concurrency", "Modern"],
+    features: ["Goroutines", "Fast Compilation", "Simple Deployment"],
+    category: "practice",
+  },
+  {
+    id: "rust",
+    name: "Rust",
+    description: "Focused on safe concurrency and memory safety without a garbage collector.",
+    icon: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg",
     color: "#000000",
-    popularity: 4,
-    tags: ["React", "SSR", "Fullstack"],
-    features: ["Server Components", "API Routes", "File-based Routing"],
-    category: "fullstack",
-  },
-  {
-    id: "express",
-    name: "Express",
-    description:
-      "Fast, unopinionated, minimalist web framework for Node.js to build APIs and web applications",
-    icon: "/expressjs-icon.svg",
-    color: "#000000",
-    popularity: 4,
-    tags: ["Node.js", "API", "Backend"],
-    features: ["Middleware", "Routing", "HTTP Utilities"],
-    category: "backend",
-  },
-  {
-    id: "vue",
-    name: "Vue.js",
-    description:
-      "Progressive JavaScript framework for building user interfaces with an approachable learning curve",
-    icon: "/vuejs-icon.svg",
-    color: "#4FC08D",
-    popularity: 4,
-    tags: ["UI", "Frontend", "JavaScript"],
-    features: ["Reactive Data Binding", "Component System", "Virtual DOM"],
-    category: "frontend",
-  },
-  {
-    id: "hono",
-    name: "Hono",
-    description:
-      "Fast, lightweight, built on Web Standards. Support for any JavaScript runtime.",
-    icon: "/hono.svg",
-    color: "#e36002",
-    popularity: 3,
-    tags: ["Node.js", "TypeScript", "Backend"],
-    features: [
-      "Dependency Injection",
-      "TypeScript Support",
-      "Modular Architecture",
-    ],
-    category: "backend",
-  },
-  {
-    id: "angular",
-    name: "Angular",
-    description:
-      "Angular is a web framework that empowers developers to build fast, reliable applications.",
-    icon: "/angular-2.svg",
-    color: "#DD0031",
-    popularity: 3,
-    tags: ["React", "Fullstack", "JavaScript"],
-    features: [
-      "Reactive Data Binding",
-      "Component System",
-      "Virtual DOM",
-      "Dependency Injection",
-      "TypeScript Support",
-    ],
-    category: "fullstack",
+    popularity: 5,
+    tags: ["Systems", "Safety", "Modern"],
+    features: ["Ownership Model", "No GC", "High Performance"],
+    category: "practice",
   },
 ];
 
@@ -143,9 +138,7 @@ const TemplateSelectionModal = ({
   const [step, setStep] = useState<"select" | "configure">("select");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [category, setCategory] = useState<
-    "all" | "frontend" | "backend" | "fullstack"
-  >("all");
+  const [category, setCategory] = useState<"all" | "practice">("all");
   const [projectName, setProjectName] = useState("");
 
   const filteredTemplates = templates.filter((template) => {
@@ -176,20 +169,21 @@ const TemplateSelectionModal = ({
     if (selectedTemplate) {
       const templateMap: Record<
         string,
-        "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR"
+        "PYTHON" | "JAVA" | "C" | "CPP" | "JAVASCRIPT" | "GO" | "RUST"
       > = {
-        react: "REACT",
-        nextjs: "NEXTJS",
-        express: "EXPRESS",
-        vue: "VUE",
-        hono: "HONO",
-        angular: "ANGULAR",
+        python: "PYTHON",
+        java: "JAVA",
+        c: "C",
+        cpp: "CPP",
+        javascript: "JAVASCRIPT",
+        go: "GO",
+        rust: "RUST",
       };
 
       const template = templates.find((t) => t.id === selectedTemplate);
       onSubmit({
         title: projectName || `New ${template?.name} Project`,
-        template: templateMap[selectedTemplate] || "REACT",
+        template: templateMap[selectedTemplate] || "JAVASCRIPT",
         description: template?.description,
       });
 
@@ -270,11 +264,9 @@ const TemplateSelectionModal = ({
                   className="w-full sm:w-auto"
                   onValueChange={(value) => setCategory(value as any)}
                 >
-                  <TabsList className="grid grid-cols-4 w-full sm:w-[400px]">
+                  <TabsList className="grid grid-cols-2 w-full sm:w-[200px]">
                     <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="frontend">Frontend</TabsTrigger>
-                    <TabsTrigger value="backend">Backend</TabsTrigger>
-                    <TabsTrigger value="fullstack">Fullstack</TabsTrigger>
+                    <TabsTrigger value="practice">Practice</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -327,20 +319,10 @@ const TemplateSelectionModal = ({
                                 {template.name}
                               </h3>
                               <div className="flex gap-1">
-                                {template.category === "frontend" && (
-                                  <Code size={14} className="text-blue-500" />
-                                )}
-                                {template.category === "backend" && (
-                                  <Server
-                                    size={14}
-                                    className="text-green-500"
-                                  />
-                                )}
-                                {template.category === "fullstack" && (
-                                  <Globe
-                                    size={14}
-                                    className="text-purple-500"
-                                  />
+                                {template.category === "practice" && (
+                                  <div className="flex items-center gap-1 bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    Practice
+                                  </div>
                                 )}
                               </div>
                             </div>

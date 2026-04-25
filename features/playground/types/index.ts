@@ -3,15 +3,20 @@ export interface TemplateFile {
   fileExtension: string;
   content: string;
 }
-export interface PlaygroundData {
-  id: string;
-  name?: string;
-  [key: string]: any;
-}
 
 export interface TemplateFolder {
   folderName: string;
   items: (TemplateFile | TemplateFolder)[];
+}
+
+export type TemplateItem = TemplateFile | TemplateFolder;
+
+export interface PlaygroundData {
+  id: string;
+  title: string;
+  description?: string;
+  template: string;
+  [key: string]: any;
 }
 
 export interface LoadingStepProps {
@@ -26,4 +31,3 @@ export interface OpenFile extends TemplateFile {
   content: string;
   originalContent: string;
 }
-

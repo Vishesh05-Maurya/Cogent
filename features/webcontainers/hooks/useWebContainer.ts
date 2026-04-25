@@ -15,6 +15,20 @@ interface UseWebContainerReturn {
   destroy: () => void; // Added destroy function
 }
 
+// Singleton instance for WebContainer
+let webContainerPromise: Promise<WebContainer> | null = null;
+
+const getWebContainerInstance = async (): Promise<WebContainer> => {
+  if (typeof window === 'undefined') {
+    throw new Error('WebContainer can only be initialized in the browser');
+  }
+
+  if (!webContainerPromise) {
+    webContainerPromise = WebContainer.boot();
+  }
+  return webContainerPromise;
+};
+
 export const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebContainerReturn => {
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -26,7 +40,7 @@ export const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebC
 
     async function initializeWebContainer() {
       try {
-        const webcontainerInstance = await WebContainer.boot();
+        const webcontainerInstance = await getWebContainerInstance();
         
         if (!mounted) return;
         
@@ -45,9 +59,6 @@ export const useWebContainer = ({ templateData }: UseWebContainerProps): UseWebC
 
     return () => {
       mounted = false;
-      if (instance) {
-        instance.teardown();
-      }
     };
   }, []);
 

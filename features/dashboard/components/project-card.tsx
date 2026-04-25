@@ -15,12 +15,20 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   // Get template icon based on template type
   const getTemplateIcon = (template: string) => {
     switch (template.toUpperCase()) {
-      case "REACT":
-        return "/react-icon.png"
-      case "NEXTJS":
-        return "/nextjs-icon.png"
-      case "EXPRESS":
-        return "/express-icon.png"
+      case "PYTHON":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg"
+      case "JAVA":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg"
+      case "CPP":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg"
+      case "C":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg"
+      case "JAVASCRIPT":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg"
+      case "GO":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original-wordmark.svg"
+      case "RUST":
+        return "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg"
       default:
         return "/placeholder.svg"
     }
@@ -55,7 +63,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm">
               <Image
                 src={project.user.image || "/placeholder.svg"}
-                alt={project.user.name}
+                alt={project.user.name || "Anonymous"}
                 width={40}
                 height={40}
                 className="object-cover"
@@ -69,7 +77,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
         <div className="flex flex-col gap-2 text-sm text-gray-500">
           <div className="flex items-center gap-2">
             <User size={14} />
-            <span>{project.user.name}</span>
+            <span>{project.user.name || "Anonymous"}</span>
           </div>
           <div className="flex items-center gap-2">
             <Calendar size={14} />

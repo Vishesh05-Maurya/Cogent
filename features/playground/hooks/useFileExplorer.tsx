@@ -6,7 +6,7 @@ import { SaveUpdatedCode } from "../actions";
 import { generateFileId } from "../libs";
 import { usePlayground } from "./usePlayground";
 
-interface FileExplorerState {
+export interface FileExplorerState {
   playgroundId: string;
   templateData: TemplateFolder | null;
   openFiles: OpenFile[];
@@ -27,36 +27,36 @@ interface FileExplorerState {
     parentPath: string,
     writeFileSync: (filePath: string, content: string) => Promise<void>,
     instance: any,
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   handleAddFolder: (
     newFolder: TemplateFolder, 
     parentPath: string, 
     instance: any, 
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   handleDeleteFile: (
     file: TemplateFile, 
     parentPath: string, 
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   handleDeleteFolder: (
     folder: TemplateFolder,
     parentPath: string,
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   handleRenameFile: (
     file: TemplateFile,
     newFilename: string,
     newExtension: string,
     parentPath: string,
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   handleRenameFolder: (
     folder: TemplateFolder,
     newFolderName: string,
     parentPath: string,
-    saveTemplateData: (data: TemplateFolder) => Promise<void>
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => Promise<void>;
   updateFileContent: (fileId: string, content: string) => void;
 }
@@ -144,7 +144,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     });
   },
 
-  handleAddFile: async (newFile, parentPath, writeFileSync, instance, saveTemplateData) => {
+  handleAddFile: async (newFile, parentPath, writeFileSync, instance, saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>) => {
     const { templateData } = get();
     if (!templateData) return;
 
@@ -184,7 +184,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     }
   },
 
-  handleAddFolder: async (newFolder, parentPath, instance, saveTemplateData) => {
+  handleAddFolder: async (newFolder, parentPath, instance, saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>) => {
     const { templateData } = get();
     if (!templateData) return;
 
@@ -222,7 +222,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     }
   },
 
-  handleDeleteFile: async (file, parentPath, saveTemplateData) => {
+  handleDeleteFile: async (file, parentPath, saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>) => {
     const { templateData, openFiles } = get();
     if (!templateData) return;
 
@@ -270,7 +270,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     }
   },
 
-  handleDeleteFolder: async (folder, parentPath, saveTemplateData) => {
+  handleDeleteFolder: async (folder, parentPath, saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>) => {
     const { templateData } = get();
     if (!templateData) return;
 
@@ -327,7 +327,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     newFilename,
     newExtension,
     parentPath,
-    saveTemplateData
+    saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>
   ) => {
     const { templateData, openFiles, activeFileId } = get();
     if (!templateData) return;
@@ -396,7 +396,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
     }
   },
 
-  handleRenameFolder: async (folder, newFolderName, parentPath, saveTemplateData) => {
+  handleRenameFolder: async (folder, newFolderName, parentPath, saveTemplateData: (data: TemplateFolder) => Promise<TemplateFolder>) => {
     const { templateData } = get();
     if (!templateData) return;
 
@@ -440,18 +440,26 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
   },
 
   updateFileContent: (fileId, content) => {
-    set((state) => ({
-      openFiles: state.openFiles.map((file) =>
-        file.id === fileId
-          ? {
-              ...file,
-              content,
-              hasUnsavedChanges: content !== file.originalContent,
-            }
-          : file
-      ),
-      editorContent:
-        fileId === state.activeFileId ? content : state.editorContent,
-    }));
+    // Prevent unneeded renders and "setState during render" warnings if Monaco fires onChange but content is identical
+    const { openFiles, activeFileId, editorContent } = get();
+    const fileToUpdate = openFiles.find(f => f.id === fileId);
+    
+    if (!fileToUpdate || fileToUpdate.content === content) return;
+
+    setTimeout(() => {
+      set((state) => ({
+        openFiles: state.openFiles.map((file) =>
+          file.id === fileId
+            ? {
+                ...file,
+                content,
+                hasUnsavedChanges: content !== file.originalContent,
+              }
+            : file
+        ),
+        editorContent:
+          fileId === state.activeFileId ? content : state.editorContent,
+      }));
+    }, 0);
   },
 }));

@@ -307,12 +307,15 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(({
 
     // Initial fit
     setTimeout(() => {
-      fitAddonInstance.fit();
+      try {
+        fitAddonInstance.fit();
+      } catch (e) {
+        // Ignore fit errors on initial load if container has no dimensions yet
+      }
     }, 100);
 
     // Welcome message
-    terminal.writeln("🚀 WebContainer Terminal");
-    terminal.writeln("Type 'help' for available commands");
+    terminal.writeln("🚀 Cogent Terminal");
     writePrompt();
 
     return terminal;
@@ -336,7 +339,7 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(({
   const clearTerminal = useCallback(() => {
     if (term.current) {
       term.current.clear();
-      term.current.writeln("🚀 WebContainer Terminal");
+      term.current.writeln("🚀 Cogent Terminal");
       writePrompt();
     }
   }, [writePrompt]);
@@ -389,7 +392,11 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(({
     const resizeObserver = new ResizeObserver(() => {
       if (fitAddon.current) {
         setTimeout(() => {
-          fitAddon.current?.fit();
+          try {
+            fitAddon.current?.fit();
+          } catch (e) {
+            // Ignore fit errors if container dimensions are invalid
+          }
         }, 100);
       }
     });
@@ -420,7 +427,7 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(({
   }, [webContainerInstance, connectToWebContainer, isConnected]);
 
   return (
-    <div className={cn("flex flex-col h-full bg-background border rounded-lg overflow-hidden", className)}>
+    <div className={cn("flex flex-col relative bg-[#09090B]", className)} style={{ width: '100%', height: '100%' }}>
       {/* Terminal Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/50">
         <div className="flex items-center gap-2">
@@ -429,7 +436,7 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(({
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
           </div>
-          <span className="text-sm font-medium">WebContainer Terminal</span>
+          <span className="text-sm font-medium">Cogent Terminal</span>
           {isConnected && (
             <div className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>

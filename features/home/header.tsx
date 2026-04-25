@@ -1,104 +1,130 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { ThemeToggle } from "@/components/ui/toggle-theme";
-import UserButton from "../auth/components/user-button";
+import { UserButton, SignInButton, useAuth } from "@clerk/nextjs";
 
 export function Header() {
+  const { isSignedIn } = useAuth();
   return (
     <>
       <div className="sticky top-0 left-0 right-0 z-50">
-        <div className="bg-white dark:bg-black/5 w-full">
-          {/* Rest of the header content */}
-          <div className="flex items-center justify-center w-full flex-col">
-            <div
-              className={`
-                            flex items-center justify-between
-                            bg-linear-to-b from-white/90 via-gray-50/90 to-white/90
-                            dark:from-zinc-900/90 dark:via-zinc-800/90 dark:to-zinc-900/90
-                            shadow-[0_2px_20px_-2px_rgba(0,0,0,0.1)]
-                            backdrop-blur-md
-                            border-x border-b 
-                            border-[rgba(230,230,230,0.7)] dark:border-[rgba(70,70,70,0.7)]
-                            w-full sm:min-w-[800px] sm:max-w-[1200px]
-                            rounded-b-[28px]
-                            px-4 py-2.5
-                            relative
-                            transition-all duration-300 ease-in-out
-                        `}
-            >
-              <div className="relative z-10 flex items-center justify-between w-full gap-2">
-                {/* Logo Section with Navigation Links */}
-                <div className="flex items-center gap-6 justify-center">
-                  <Link
-                    href="/"
-                    className="flex items-center gap-2 justify-center"
-                  >
-                    <Image
-                      src={"/logo.svg"}
-                      alt="Logo"
-                      height={60}
-                      width={60}
-                    />
+        {/* Full-width backdrop blur layer */}
+        <div className="absolute inset-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/60 dark:border-zinc-800/60" />
 
-                    <span className="hidden sm:block font-extrabold text-lg">
-                      VibeCode Editor
-                    </span>
-                  </Link>
-                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                  {/* Desktop Navigation Links */}
-                  <div className="hidden sm:flex items-center gap-4">
-                    <Link
-                      href="/docs/components/background-paths"
-                      className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                    >
-                      Docs
-                    </Link>
-                    {/* <Link
-                                            href="/pricing"
-                                            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                                        >
-                                            Pricing
-                                        </Link> */}
-                    <Link
-                      href="https://codesnippetui.pro/templates?utm_source=codesnippetui.com&utm_medium=header"
-                      target="_blank"
-                      className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors flex items-center gap-2"
-                    >
-                      API
-                      <span className="text-green-500 dark:text-green-400 border border-green-500 dark:border-green-400 rounded-lg px-1 py-0.5 text-xs">
-                        New
-                      </span>
-                    </Link>
-                  </div>
-                </div>
+        {/* Subtle gradient accent line at top */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400/70 dark:via-emerald-500/60 to-transparent" />
 
-                {/* Right side items */}
-                <div className="hidden sm:flex items-center gap-3">
-                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                  {/* <HeaderPro /> */}
-                  <ThemeToggle />
-                  <UserButton/>
-                </div>
+        {/* Main header row */}
+        <div className="relative flex items-center justify-between w-full px-6 md:px-10 lg:px-16 h-[72px]">
 
-                {/* Mobile Navigation remains unchanged */}
-                <div className="flex sm:hidden items-center gap-4">
-                  <Link
-                    href="/docs/components/action-search-bar"
-                    className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                  >
-                    Docs
-                  </Link>
-                  <Link
-                    href="/pricing"
-                    className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                  >
-                    API
-                  </Link>
-                  <ThemeToggle />
-                  <UserButton/>
-                </div>
+          {/* ── LEFT: Logo + Nav ── */}
+          <div className="flex items-center gap-8">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="relative">
+                <div className="absolute -inset-1 rounded-xl bg-emerald-400/20 dark:bg-emerald-500/20 blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Image
+                  src="/logo2.png"
+                  alt="Logo"
+                  height={44}
+                  width={44}
+                  className="relative rounded-xl"
+                />
               </div>
-            </div>
+              <span className="hidden sm:block font-black text-[15px] tracking-widest uppercase text-zinc-900 dark:text-zinc-100 letter-spacing-widest">
+                A Coding Agent
+              </span>
+            </Link>
+
+            {/* Divider */}
+            <div className="hidden sm:block h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+
+            {/* Desktop Nav Links */}
+            <nav className="hidden sm:flex items-center gap-1">
+              <Link
+                href="/docs/components/background-paths"
+                className="relative px-3 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+              >
+                Docs
+              </Link>
+
+              {/* <Link
+                href="https://codesnippetui.pro/templates?utm_source=codesnippetui.com&utm_medium=header"
+                target="_blank"
+                className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+              >
+                API
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
+                  New
+                </span>
+              </Link> */}
+
+              <Link
+                href="/dashboard"
+                className="px-3 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+              >
+                Dashboard
+              </Link>
+
+              <Link
+                href="/features"
+                className="px-3 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+              >
+                Features
+              </Link>
+
+              <Link
+                href="/snippets"
+                className="px-3 py-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors duration-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+              >
+                Snippets
+              </Link>
+            </nav>
+          </div>
+
+          {/* ── RIGHT: Actions ── */}
+          <div className="hidden sm:flex items-center gap-3">
+            <ThemeToggle />
+            <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-700" />
+            {isSignedIn ? (
+              <UserButton />
+            ) : (
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+                <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors duration-200 shadow-sm">
+                  Sign In
+                </button>
+              </SignInButton>
+            )}
+          </div>
+
+          {/* ── MOBILE Nav ── */}
+          <div className="flex sm:hidden items-center gap-3">
+            <Link
+              href="/docs/components/action-search-bar"
+              className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              Docs
+            </Link>
+
+            <Link
+              href="/snippets"
+              className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+            >
+              Snippets
+            </Link>
+            
+            <ThemeToggle />
+            {isSignedIn ? (
+              <UserButton />
+            ) : (
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+                <button className="text-sm font-semibold text-white bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 px-3 py-1.5 rounded-lg">
+                  Sign In
+                </button>
+              </SignInButton>
+            )}
           </div>
         </div>
       </div>

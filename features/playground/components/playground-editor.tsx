@@ -1,9 +1,10 @@
 "use client"
 
-import { useRef, useEffect, useCallback } from "react"
+import { useRef, useEffect, useCallback, useState } from "react"
 import Editor, { type Monaco } from "@monaco-editor/react"
 import { configureMonaco, defaultEditorOptions, getEditorLanguage } from "@/features/playground/libs/editor-config"
 import type { TemplateFile } from "@/features/playground/libs/path-to-json"
+import { InlineAIPrompt } from "./inline-ai-prompt"
 
 interface PlaygroundEditorProps {
   activeFile: TemplateFile | undefined
@@ -14,7 +15,8 @@ interface PlaygroundEditorProps {
   suggestionPosition: { line: number; column: number } | null
   onAcceptSuggestion: (editor: any, monaco: any) => void
   onRejectSuggestion: (editor: any) => void
-  onTriggerSuggestion: (type: string, editor: any) => void
+  onTriggerSuggestion: (type: string, editor: any, fileName?: string) => void
+  isInlineAIEnabled: boolean
 }
 
 export const PlaygroundEditor = ({
@@ -27,6 +29,7 @@ export const PlaygroundEditor = ({
   onAcceptSuggestion,
   onRejectSuggestion,
   onTriggerSuggestion,
+  isInlineAIEnabled,
 }: PlaygroundEditorProps) => {
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<Monaco | null>(null)
@@ -40,6 +43,13 @@ export const PlaygroundEditor = ({
   const suggestionAcceptedRef = useRef(false)
   const suggestionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const tabCommandRef = useRef<any>(null)
+
+  // Inline AI generation state
+  const [inlinePromptOpen, setInlinePromptOpen] = useState(false)
+  const [inlinePromptPosition, setInlinePromptPosition] = useState<{ top: number; left: number } | null>(null)
+  const [inlineGeneratedCode, setInlineGeneratedCode] = useState<string | null>(null)
+  const [inlinePromptLoading, setInlinePromptLoading] = useState(false)
+  const inlineCursorPositionRef = useRef<{ line: number; column: number } | null>(null)
 
   // Generate unique ID for each suggestion
   const generateSuggestionId = () => `suggestion-${Date.now()}-${Math.random()}`
@@ -340,12 +350,39 @@ export const PlaygroundEditor = ({
     // Keyboard shortcuts
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
       console.log("Ctrl+Space pressed, triggering suggestion")
-      onTriggerSuggestion("completion", editor)
+      onTriggerSuggestion("completion", editor, activeFile ? `${activeFile.filename}.${activeFile.fileExtension}` : undefined)
     })
 
-    // CRITICAL: Override Tab key with high priority and prevent default Monaco behavior
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyG, () => {
+      console.log("Ctrl+G pressed, opening inline prompt")
+      
+      if (!isInlineAIEnabled) {
+        console.warn("Inline AI is deactivated via the toggle.");
+        return;
+      }
+
+      const position = editor.getPosition()
+      if (!position) return
+      
+      inlineCursorPositionRef.current = { line: position.lineNumber, column: position.column }
+      
+      // Calculate pixel position
+      const pixelPos = editor.getScrolledVisiblePosition(position)
+      if (pixelPos) {
+        setInlinePromptPosition({ top: pixelPos.top, left: pixelPos.left })
+      } else {
+        setInlinePromptPosition(null)
+      }
+      
+      setInlinePromptOpen(true)
+      setInlineGeneratedCode(null)
+    })
+
+    // Remove strict tab overrides since background ghost text is disabled.
     if (tabCommandRef.current) {
-      tabCommandRef.current.dispose()
+      // addCommand returns a string ID, not a disposable. 
+      // There is no direct way to remove a command in Monaco by ID via the public API easily, 
+      // but we can at least stop calling .dispose() on it.
     }
 
     tabCommandRef.current = editor.addCommand(
@@ -420,26 +457,13 @@ export const PlaygroundEditor = ({
           onRejectSuggestion(editor)
         }
       }
-
-      // Trigger new suggestion if appropriate (simplified)
-      if (!currentSuggestionRef.current && !suggestionLoading) {
-        // Clear any existing timeout
-        if (suggestionTimeoutRef.current) {
-          clearTimeout(suggestionTimeoutRef.current)
-        }
-
-        // Trigger suggestion with a delay
-        suggestionTimeoutRef.current = setTimeout(() => {
-          onTriggerSuggestion("completion", editor)
-        }, 300)
-      }
     })
 
     // Listen for content changes to detect manual typing over suggestions
     editor.onDidChangeModelContent((e: any) => {
       if (isAcceptingSuggestionRef.current) return
 
-      // If user types while there's a suggestion, clear it (unless it's our insertion)
+      // If user types while there's a suggestion, clear it
       if (currentSuggestionRef.current && e.changes.length > 0 && !suggestionAcceptedRef.current) {
         const change = e.changes[0]
 
@@ -448,36 +472,11 @@ export const PlaygroundEditor = ({
           change.text === currentSuggestionRef.current.text ||
           change.text === currentSuggestionRef.current.text.replace(/\r/g, "")
         ) {
-          console.log("Our suggestion was inserted, not clearing")
           return
         }
 
         // User typed something else, clear the suggestion
-        console.log("User typed while suggestion active, clearing")
         clearCurrentSuggestion()
-      }
-
-      // Trigger context-aware suggestions on certain typing patterns
-      if (e.changes.length > 0 && !suggestionAcceptedRef.current) {
-        const change = e.changes[0]
-
-        // Trigger suggestions after specific characters
-        if (
-          change.text === "\n" || // New line
-          change.text === "{" || // Opening brace
-          change.text === "." || // Dot notation
-          change.text === "=" || // Assignment
-          change.text === "(" || // Function call
-          change.text === "," || // Parameter separator
-          change.text === ":" || // Object property
-          change.text === ";" // Statement end
-        ) {
-          setTimeout(() => {
-            if (editorRef.current && !currentSuggestionRef.current && !suggestionLoading) {
-              onTriggerSuggestion("completion", editor)
-            }
-          }, 100) // Small delay to let the change settle
-        }
       }
     })
 
@@ -497,6 +496,78 @@ export const PlaygroundEditor = ({
     }
   }
 
+  const handleInlinePromptSubmit = async (promptText: string) => {
+    if (!editorRef.current) return
+    setInlinePromptLoading(true)
+    setInlineGeneratedCode(null)
+    
+    try {
+      const model = editorRef.current.getModel()
+      const payload = {
+        fileContent: model?.getValue() || "",
+        cursorLine: (inlineCursorPositionRef.current?.line || 1) - 1,
+        cursorColumn: (inlineCursorPositionRef.current?.column || 1) - 1,
+        suggestionType: "prompt",
+        userPrompt: promptText,
+        fileName: activeFile ? `${activeFile.filename}.${activeFile.fileExtension}` : undefined,
+      }
+      
+      const response = await fetch("/api/code-suggestion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) throw new Error("API error")
+      
+      const data = await response.json()
+      if (data.suggestion && !data.suggestion.includes("AI suggestion unavailable")) {
+        setInlineGeneratedCode(data.suggestion.trim())
+      } else {
+        setInlineGeneratedCode("// No code could be generated. Try again.")
+      }
+    } catch (error) {
+      console.error(error)
+      setInlineGeneratedCode("// Error communicating with AI service.")
+    } finally {
+      setInlinePromptLoading(false)
+    }
+  }
+
+  const handleInlinePromptAccept = () => {
+    if (!editorRef.current || !monacoRef.current || !inlineGeneratedCode || !inlineCursorPositionRef.current) return
+    
+    const editor = editorRef.current
+    const monaco = monacoRef.current
+    const pos = inlineCursorPositionRef.current
+    
+    const range = new monaco.Range(pos.line, pos.column, pos.line, pos.column)
+    const success = editor.executeEdits("inline-ai-accept", [
+      { range, text: inlineGeneratedCode, forceMoveMarkers: true },
+    ])
+    
+    if (success) {
+      const lines = inlineGeneratedCode.split("\n")
+      const endLine = pos.line + lines.length - 1
+      const endColumn = lines.length === 1 ? pos.column + inlineGeneratedCode.length : lines[lines.length - 1].length + 1
+      editor.setPosition({ lineNumber: endLine, column: endColumn })
+      
+      if (onContentChange) {
+        onContentChange(editor.getValue())
+      }
+      editor.focus()
+    }
+    
+    setInlinePromptOpen(false)
+    setInlineGeneratedCode(null)
+  }
+
+  const handleInlinePromptReject = () => {
+    setInlinePromptOpen(false)
+    setInlineGeneratedCode(null)
+    if (editorRef.current) editorRef.current.focus()
+  }
+
   useEffect(() => {
     updateEditorLanguage()
   }, [activeFile])
@@ -512,7 +583,6 @@ export const PlaygroundEditor = ({
         inlineCompletionProviderRef.current = null
       }
       if (tabCommandRef.current) {
-        tabCommandRef.current.dispose()
         tabCommandRef.current = null
       }
     }
@@ -520,6 +590,17 @@ export const PlaygroundEditor = ({
 
   return (
     <div className="h-full relative">
+      <InlineAIPrompt
+        isOpen={inlinePromptOpen}
+        position={inlinePromptPosition}
+        onClose={handleInlinePromptReject}
+        onSubmit={handleInlinePromptSubmit}
+        onAccept={handleInlinePromptAccept}
+        onReject={handleInlinePromptReject}
+        generatedCode={inlineGeneratedCode}
+        isLoading={inlinePromptLoading}
+      />
+
       {/* Loading indicator */}
       {suggestionLoading && (
         <div className="absolute top-2 right-2 z-10 bg-red-100 dark:bg-red-900 px-2 py-1 rounded text-xs text-red-700 dark:text-red-300 flex items-center gap-1">
@@ -539,6 +620,7 @@ export const PlaygroundEditor = ({
       <Editor
         height="100%"
         value={content}
+        path={activeFile ? `file:///${activeFile.filename}.${activeFile.fileExtension}` : undefined}
         onChange={(value) => onContentChange(value || "")}
         onMount={handleEditorDidMount}
         language={activeFile ? getEditorLanguage(activeFile.fileExtension || "") : "plaintext"}
